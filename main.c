@@ -47,11 +47,13 @@ int main()
 
     // // DETERMINE WHO STARTS
 
-    char *currentPlayer = getCurrentPlayer();
+    // char *currentPlayer = getCurrentPlayer();
+    char *currentPlayer = "Bot";
 
     printf("%s starts.\n", currentPlayer);
     int rounds = 0;
     char lastLetter = ' ';
+    char lastSpell[MAX_SPELL_LENGTH] = "";
     char **enteredSpells = NULL;
     enteredSpells = (char **)malloc(sizeof(char *) * numSpells);
 
@@ -66,18 +68,19 @@ int main()
         }
         else
         {
-            switch (difficulty)
-            {
-            case 1:
-                strcpy(spell, makeMoveLevel1(spellsList, numSpells));
-                break;
-            case 2:
-                strcpy(spell, makeMoveLevel2(spellsList, numSpells, lastLetter, enteredSpells));
-                break;
-            default:
-                strcpy(spell, makeMoveLevel1(spellsList, numSpells));
-                break;
-            }
+            // switch (difficulty)
+            // {
+            // case 1:
+            //     strcpy(spell, makeMoveLevel1(spellsList, numSpells));
+            //     break;
+            // case 2:
+            //     strcpy(spell, makeMoveLevel2(spellsList, numSpells, lastLetter, enteredSpells));
+            //     break;
+            // default:
+            //     strcpy(spell, makeMoveLevel1(spellsList, numSpells));
+            //     break;
+            // }
+            strcpy(spell, findBestMove(enteredSpells, lastSpell, numSpells));
         }
 
         if (rounds != 0 && spell[0] != lastLetter)
@@ -102,6 +105,7 @@ int main()
         }
 
         lastLetter = spell[strlen(spell) - 1];
+        strcpy(lastSpell, spell);
 
         shiftPlayer(&currentPlayer);
 
