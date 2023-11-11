@@ -5,6 +5,8 @@
 
 // Local Dependincies
 
+#include "Graph.h"
+#include "Graph.c"
 #include "spellsHandler.h"
 #include "spellsHandler.c"
 #include "game.h"
@@ -16,7 +18,8 @@
 
 int main()
 {
-    // Loading Spells from file
+
+    // // Loading Spells from file
     int numSpells;
     char **spellsList = loadSpellsFromFile("/Users/theokhalil/AUB/AUB/3rd Sem/CMPS 270/projects/CMPS270_Project-01/spells.txt", &numSpells, MAX_SPELL_LENGTH);
 
@@ -25,6 +28,8 @@ int main()
         printf("Failed to load the spell list.\n");
         return 1;
     }
+    Graph *graph = createGraph(numSpells, spellsList);
+    addEdges(graph, spellsList, numSpells);
 
     // // Getting user input
 
@@ -47,8 +52,7 @@ int main()
 
     // // DETERMINE WHO STARTS
 
-    // char *currentPlayer = getCurrentPlayer();
-    char *currentPlayer = "Bot";
+    char *currentPlayer = getCurrentPlayer();
 
     printf("%s starts.\n", currentPlayer);
     int rounds = 0;
@@ -80,7 +84,8 @@ int main()
             //     strcpy(spell, makeMoveLevel1(spellsList, numSpells));
             //     break;
             // }
-            strcpy(spell, findBestMove(enteredSpells, lastSpell, numSpells));
+            strcpy(spell, makeMoveLevel3(graph, lastSpell, enteredSpells, rounds));
+            printf("%s\n", spell);
         }
 
         if (rounds != 0 && spell[0] != lastLetter)
@@ -115,18 +120,30 @@ int main()
         rounds++;
     }
 
-    // Free memory allocated for spellsList and enteredSpells
+    // Free memory allocated for spellsList and enteredSpells, free Graph
     for (int i = 0; i < numSpells; i++)
     {
         free(spellsList[i]);
     }
     free(spellsList);
 
-    for (int i = 0; i < rounds; i++)
+    for (int i = 0; i < sizeof(char *) * numSpells; i++)
     {
         free(enteredSpells[i]);
     }
     free(enteredSpells);
+
+    for (int i = 0; i < numSpells; i++)
+    {
+        free(spellsList[i]);
+        free(graph->vertexNames[i]);
+        free(graph->adjLists[i]);
+    }
+    free(graph->vertexNames);
+    free(graph->adjLists);
+    free(graph->visited);
+    free(graph);
+    free(spellsList);
 
     return 0;
 }

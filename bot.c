@@ -1,7 +1,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <stdbool.h>
+#include "Graph.h"
 #include "spellsHandler.h"
+#define MINUS_INFINITY_SCORE -1000000
+#define INFINITY_SCORE 1000000
 
 char *makeMoveLevel1(char **spellsList, int numSpells)
 {
@@ -31,104 +35,135 @@ char *makeMoveLevel2(char **spellsList, int numSpells, char lastLetter, char **u
     return spell;
 }
 
-// Function to check if a spell is valid (not used before)
-int isValidSpell(char *usedSpells[], int numUsedSpells, const char *spell)
+int countUnvisitedNeighbors(Graph *gameGraph, int vertexIndex)
 {
-    if (spell == NULL || usedSpells == NULL)
+    int count = 0;
+    gameGraph->visited[vertexIndex] = 1; // Mark the current vertex as visited
+
+    // Iterate through neighbors
+    Node *current = gameGraph->adjLists[vertexIndex];
+    while (current != NULL)
     {
-        return 0;
-    }
-    for (int i = 0; i < numUsedSpells; ++i)
-    {
-        if (strcmp(usedSpells[i], spell) == 0)
+        int neighborIndex = getVertexIndex(gameGraph, current->vertex);
+        if (!gameGraph->visited[neighborIndex])
         {
-            return 0; // Spell is not valid
+            count += 1; // Count unvisited neighbors
+            count += countUnvisitedNeighbors(gameGraph, neighborIndex);
         }
-    }
-    return 1; // Spell is valid
-}
-
-// Function to check if a spell starts with the given character
-int isValidNextSpell(const char *prevSpell, const char *spell)
-{
-    if (prevSpell == NULL || spell == NULL)
-    {
-        return 1; // First spell is always valid
-    }
-    return (prevSpell[strlen(prevSpell) - 1] == spell[0]);
-}
-
-// Utility function to evaluate the game state
-int evaluate(char *usedSpells[], int numUsedSpells, int maximizingPlayer)
-{
-    // You can define your own evaluation function based on game state
-    // For simplicity, this example just returns 1 if the bot wins and -1 if the player wins.
-    return (numUsedSpells % 2 == 0 ? (maximizingPlayer ? 1 : -1) : (maximizingPlayer ? -1 : 1));
-}
-
-// Minimax function
-int minimax(char *usedSpells[], int numUsedSpells, const char *prevSpell, int depth, int maximizingPlayer, int numSpells)
-{
-    // Terminal condition: game over or reached maximum depth
-    if (numUsedSpells == numSpells || depth == 0)
-    {
-        return evaluate(usedSpells, numUsedSpells, maximizingPlayer);
+        current = current->next;
     }
 
-    // Initialize the best value based on the player's perspective
-    int bestValue = (maximizingPlayer ? -1000 : 1000);
+    return count;
+}
 
-    // Iterate through all possible spells
-    for (int i = 0; i < numSpells; ++i)
+/// To revisit later
+
+int evaluate(Graph *gameGraph, char *lastSpell)
+{
+    int totalWeight = 0;
+    for (int i = 0; i < gameGraph->numVertices; ++i)
     {
-        if (isValidNextSpell(prevSpell, usedSpells[i]) && isValidSpell(usedSpells, numUsedSpells, usedSpells[i]))
+        gameGraph->visited[i] = 0; // Initialize visited array
+    }
+
+    // Find the index of the last spell in the graph
+    int lastSpellIndex = getVertexIndex(gameGraph, lastSpell);
+
+    // Criteria: Unvisited neighbors of Spells
+    totalWeight += countUnvisitedNeighbors(gameGraph, lastSpellIndex);
+
+    return totalWeight;
+}
+
+int minimax(Graph *gameGraph, char *lastSpell, int depth, int alpha, int beta, bool isMaximizing, char **usedSpells, int numUsedSpells)
+{
+    if (depth == 0)
+    {
+        return evaluate(gameGraph, lastSpell);
+    }
+    if (isMaximizing)
+    {
+        int maxEval = MINUS_INFINITY_SCORE;
+
+        for (int i = 0; i < gameGraph->numVertices; i++)
         {
-            // Make the move
-            usedSpells[numUsedSpells++] = usedSpells[i];
+            char *currentSpell = gameGraph->vertexNames[i];
 
-            // Recursively call minimax for the next level
-            int value = minimax(usedSpells, numUsedSpells, usedSpells[i], depth - 1, !maximizingPlayer, numSpells);
-
-            // Undo the move
-            usedSpells[--numUsedSpells] = NULL;
-
-            // Update the best value based on the player's perspective
-            if ((maximizingPlayer && value > bestValue) || (!maximizingPlayer && value < bestValue))
+            if (!isSpellInList(currentSpell, usedSpells, numUsedSpells) && lastSpell[strlen(lastSpell) - 1] == currentSpell[0])
             {
-                bestValue = value;
+                usedSpells[numUsedSpells++] = currentSpell;
+
+                int eval = minimax(gameGraph, currentSpell, depth, alpha, beta, false, usedSpells, numUsedSpells);
+
+                usedSpells[--numUsedSpells] = NULL;
+
+                alpha = (eval > alpha) ? eval : alpha;
+                maxEval = (eval > maxEval) ? eval : maxEval;
+
+                if (beta <= alpha)
+                {
+                    break;
+                }
             }
         }
+        return maxEval;
     }
+    else
+    {
+        int minEval = INFINITY_SCORE;
 
-    return bestValue;
+        for (int i = 0; i < gameGraph->numVertices; ++i)
+        {
+            char *currentSpell = gameGraph->vertexNames[i];
+
+            if (!isSpellInList(currentSpell, usedSpells, numUsedSpells) && lastSpell[strlen(lastSpell) - 1] == currentSpell[0])
+            {
+                usedSpells[numUsedSpells++] = currentSpell;
+
+                int eval = minimax(gameGraph, currentSpell, depth - 1, alpha, beta, true, usedSpells, numUsedSpells);
+
+                usedSpells[--numUsedSpells] = NULL;
+                beta = (eval < beta) ? eval : beta;
+                minEval = (eval < minEval) ? eval : minEval;
+
+                if (beta <= alpha)
+                {
+                    break;
+                }
+            }
+        }
+        return minEval;
+    }
 }
 
-// Function to find the best move for the bot
-char *findBestMove(char *usedSpells[], char *prevSpell, int numSpells)
+char *makeMoveLevel3(Graph *gameGraph, char *lastSpell, char **usedSpells, int numUsedSpells)
 {
-    int numUsedSpells = sizeof(usedSpells) / sizeof(usedSpells[0]);
-    int bestValue = -1000;
-    const char *bestMove = NULL;
 
-    // Iterate through all possible spells
-    for (int i = 0; i < numSpells; ++i)
+    int bestScore = MINUS_INFINITY_SCORE;
+    char *bestMove = NULL;
+    char *currentSpell = NULL;
+
+    if (lastSpell[0] == '\0')
     {
-        if (isValidNextSpell(prevSpell, usedSpells[i]) && isValidSpell(usedSpells, numUsedSpells, usedSpells[i]))
+        return makeMoveLevel1(gameGraph->vertexNames, gameGraph->numVertices);
+    }
+
+    for (int i = 0; i < gameGraph->numVertices; i++)
+    {
+        currentSpell = gameGraph->vertexNames[i];
+
+        if (!isSpellInList(currentSpell, usedSpells, numUsedSpells) && lastSpell[strlen(lastSpell) - 1] == currentSpell[0])
         {
-            // Make the move
-            usedSpells[numUsedSpells++] = usedSpells[i];
+            usedSpells[numUsedSpells++] = currentSpell;
 
-            // Recursively call minimax for the next level
-            int moveValue = minimax(usedSpells, numUsedSpells, usedSpells[i], 2, 0, numSpells); // Adjust depth as needed
+            int score = minimax(gameGraph, lastSpell, 3, MINUS_INFINITY_SCORE, INFINITY_SCORE, false, usedSpells, numUsedSpells);
 
-            // Undo the move
             usedSpells[--numUsedSpells] = NULL;
 
-            // Update the best move
-            if (moveValue > bestValue)
+            if (score >= bestScore)
             {
-                bestValue = moveValue;
-                bestMove = usedSpells[i];
+                bestScore = score;
+                bestMove = currentSpell;
             }
         }
     }
