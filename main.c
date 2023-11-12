@@ -72,19 +72,21 @@ int main()
         }
         else
         {
-            // switch (difficulty)
-            // {
-            // case 1:
-            //     strcpy(spell, makeMoveLevel1(spellsList, numSpells));
-            //     break;
-            // case 2:
-            //     strcpy(spell, makeMoveLevel2(spellsList, numSpells, lastLetter, enteredSpells));
-            //     break;
-            // default:
-            //     strcpy(spell, makeMoveLevel1(spellsList, numSpells));
-            //     break;
-            // }
-            strcpy(spell, makeMoveLevel3(graph, lastSpell, enteredSpells, rounds));
+            switch (difficulty)
+            {
+            case 1:
+                strcpy(spell, makeMoveLevel1(spellsList, numSpells));
+                break;
+            case 2:
+                strcpy(spell, makeMoveLevel2(spellsList, numSpells, lastLetter, enteredSpells));
+                break;
+            case 3:
+                strcpy(spell, makeMoveLevel3(graph, lastSpell, enteredSpells, rounds));
+                break;
+            default:
+                strcpy(spell, makeMoveLevel1(spellsList, numSpells));
+                break;
+            }
             printf("%s\n", spell);
         }
 
